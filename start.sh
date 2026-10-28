@@ -18,8 +18,10 @@ echo "==> Starting backend (FastAPI on :8000)..."
 if lsof -nP -iTCP:8000 -sTCP:LISTEN > /dev/null 2>&1; then
   echo "    Backend already running on :8000"
 else
-  # Uses Mistral if the model is installed, otherwise falls back to llama3.2
-  OLLAMA_MODEL=mistral nohup .venv/bin/uvicorn backend.main:app --host 0.0.0.0 --port 8000 > backend_server.log 2>&1 &
+  # The tutor uses llama3.2 by default (fits 8 GB RAM).
+  # To prefer Mistral when enough RAM is free, run:
+  #   OLLAMA_MODEL=mistral .venv/bin/uvicorn backend.main:app --port 8000
+  nohup .venv/bin/uvicorn backend.main:app --host 0.0.0.0 --port 8000 > backend_server.log 2>&1 &
   echo "    Backend starting..."
 fi
 

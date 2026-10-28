@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Layout from '../components/Layout'
+import TeacherNav from '../components/TeacherNav'
 import { useLanguage } from '../components/LanguageContext'
+import { useRole } from '../components/RoleContext'
 import DocumentCard from '../components/DocumentCard'
 import { Document } from '../types'
 import { DocumentsAPI, healthCheck } from '../lib/api'
@@ -75,6 +77,13 @@ export default function DocumentsPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [backendAvailable, setBackendAvailable] = useState(false)
   const { language, setLanguage } = useLanguage()
+  const { setRole } = useRole()
+
+  // This is the teacher space
+  useEffect(() => {
+    setRole('teacher')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     healthCheck().then(setBackendAvailable)
@@ -115,6 +124,7 @@ export default function DocumentsPage() {
       description="View and manage all curriculum documents"
     >
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        <TeacherNav />
         {/* Header */}
         <header className="bg-white border-b border-slate-200 px-8 py-5 flex items-center justify-between shrink-0">
           <div>
@@ -126,20 +136,7 @@ export default function DocumentsPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Language toggle */}
-            <div className="flex bg-slate-100 rounded-lg p-0.5">
-              {(['en', 'fr'] as const).map((lang) => (
-                <button
-                  key={lang}
-                  onClick={() => setLanguage(lang)}
-                  className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${
-                    language === lang ? 'bg-white text-primary-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                  }`}
-                >
-                  {lang.toUpperCase()}
-                </button>
-              ))}
-            </div>
+            {/* Language lives in the global TopBar */}
 
             {/* Upload */}
             <Link

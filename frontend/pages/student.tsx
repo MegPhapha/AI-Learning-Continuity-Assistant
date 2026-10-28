@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/router'
 import ChatPanel from '../components/ChatPanel'
 import DailyChallenge, { DailyStats, levelFor } from '../components/DailyChallenge'
@@ -12,6 +12,8 @@ import { Document } from '../types'
 import { ChatAPI, DocumentsAPI, healthCheck } from '../lib/api'
 import { AlertCircle, Zap, ChevronDown } from 'react-feather'
 import { motion } from 'framer-motion'
+
+import { useRole } from '../components/RoleContext'
 
 // Demo documents data (fallback when backend is not available)
 const DEMO_DOCUMENTS: Document[] = [
@@ -168,6 +170,13 @@ export default function StudentPage() {
   // Metrics panel visibility (level button at the top)
   const [showStats, setShowStats] = useState(false)
   const levelInfo = levelFor(dailyStats.xp ?? 0)
+  const { setRole } = useRole()
+
+  // This is the student space
+  useEffect(() => {
+    setRole('student')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     // Client-only: restore today's progress after hydration
@@ -225,6 +234,31 @@ export default function StudentPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDocument])
+
+  // Language is switched from the global TopBar: keep an existing
+  // conversation, but re-greet in the new language if the chat hasn't started
+  const isFirstRender = useRef(true)
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      return
+    }
+    if (messages.length <= 1 && messages[0]?.id.startsWith('welcome-') && selectedDocument) {
+      setMessages([
+        {
+          id: 'welcome-' + Date.now(),
+          role: 'assistant' as const,
+          content: language === 'fr'
+            ? `Bonjour ! Je suis votre assistant d'apprentissage IA pour **${translateSubject(selectedDocument.subject, language)} - ${translateGrade(selectedDocument.grade, language)}**. Posez-moi des questions sur votre programme.`
+            : `Hello! I'm your AI Learning Assistant for **${translateSubject(selectedDocument.subject, language)} - ${translateGrade(selectedDocument.grade, language)}**. Ask me questions about your curriculum.`,
+          timestamp: new Date(),
+          verified: true,
+          sources: [{ docName: selectedDocument.name, page: 1 }],
+        },
+      ])
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [language])
 
   const handleSendMessage = async (content: string) => {
     if (!content.trim() || !selectedDocument) return
@@ -405,25 +439,6 @@ export default function StudentPage() {
             grade: d.grade,
           }))}
           language={language}
-          onLanguageChange={(lang) => {
-            // Switch the whole UI language; keep an existing conversation, but
-            // re-greet in the new language if the chat hasn't really started
-            setLanguage(lang)
-            if (messages.length <= 1 && messages[0]?.id.startsWith('welcome-') && selectedDocument) {
-              setMessages([
-                {
-                  id: 'welcome-' + Date.now(),
-                  role: 'assistant' as const,
-                  content: lang === 'fr'
-                    ? `Bonjour ! Je suis votre assistant d'apprentissage IA pour **${selectedDocument.subject} - ${selectedDocument.grade}**. Posez-moi des questions sur votre programme.`
-                    : `Hello! I'm your AI Learning Assistant for **${selectedDocument.subject} - ${selectedDocument.grade}**. Ask me questions about your curriculum.`,
-                  timestamp: new Date(),
-                  verified: true,
-                  sources: [{ docName: selectedDocument.name, page: 1 }],
-                },
-              ])
-            }
-          }}
         />
         </div>
       </div>

@@ -1,9 +1,27 @@
-/* Import Inter font */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+/* Offline-first: no webfont import. The app uses the system font stack
+   (see tailwind.config.js) so first paint needs zero network requests. */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Accessibility: visible keyboard focus on all interactive elements */
+:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Respect users who prefer less motion (and low-end devices) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
 
 /* Code inside markdown <pre> blocks must not get the inline chip style
    (react-markdown v9 has no `inline` prop on the code renderer).

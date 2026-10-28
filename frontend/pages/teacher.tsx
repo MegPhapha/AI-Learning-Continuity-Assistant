@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react'
 import { Users, FileText, CheckCircle, Clock, XCircle, Plus, Upload, Search, Filter, MoreVertical, Eye, Edit, Trash2, AlertTriangle, Flag, BarChart2, X } from 'react-feather'
 import Layout from '../components/Layout'
+import TeacherNav from '../components/TeacherNav'
 import { useLanguage } from '../components/LanguageContext'
+import { useRole } from '../components/RoleContext'
 import DocumentCard from '../components/DocumentCard'
 import { Document, TeacherStats } from '../types'
 import { DocumentsAPI, TeacherAPI, healthCheck } from '../lib/api'
@@ -98,6 +100,13 @@ export default function TeacherDashboard() {
   const [searchQuery, setSearchQuery] = useState('')
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all')
   const { language, setLanguage } = useLanguage()
+  const { setRole } = useRole()
+
+  // This is the teacher space
+  useEffect(() => {
+    setRole('teacher')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [backendAvailable, setBackendAvailable] = useState(false)
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -233,6 +242,7 @@ export default function TeacherDashboard() {
       description="Teacher dashboard for managing curriculum documents"
     >
       <div className="flex-1 flex flex-col min-h-0 overflow-y-auto">
+        <TeacherNav />
         {/* Header */}
         <div className="p-6 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
           <div className="max-w-6xl mx-auto">
@@ -253,29 +263,8 @@ export default function TeacherDashboard() {
                   <Plus className="w-4 h-4" />
                   <span>{language === 'fr' ? 'Ajouter un document' : 'Add Document'}</span>
                 </button>
-                
-                <div className="flex bg-white rounded-lg p-1 border border-slate-200">
-                  <button
-                    onClick={() => setLanguage('en')}
-                    className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${
-                      language === 'en'
-                        ? 'bg-primary-600 text-white'
-                        : 'text-slate-500 hover:bg-slate-100'
-                    }`}
-                  >
-                    EN
-                  </button>
-                  <button
-                    onClick={() => setLanguage('fr')}
-                    className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${
-                      language === 'fr'
-                        ? 'bg-primary-600 text-white'
-                        : 'text-slate-500 hover:bg-slate-100'
-                    }`}
-                  >
-                    FR
-                  </button>
-                </div>
+
+                {/* Language lives in the global TopBar */}
               </div>
             </div>
           </div>

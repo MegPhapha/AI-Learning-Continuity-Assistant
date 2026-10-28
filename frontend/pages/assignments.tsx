@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react'
 import { Clipboard, Plus, X, Target, FileText, Clock, CheckCircle, Trash2, Eye, Users } from 'react-feather'
 import Layout from '../components/Layout'
+import TeacherNav from '../components/TeacherNav'
 import { useLanguage } from '../components/LanguageContext'
+import { useRole } from '../components/RoleContext'
 import { translateSubject, translateGrade } from '../lib/i18n'
 import { Assignment } from '../types'
 import { AssignmentsAPI, healthCheck } from '../lib/api'
@@ -51,6 +53,13 @@ type FilterTab = 'all' | 'daily_target' | 'assignment' | 'review'
 
 export default function AssignmentsPage() {
   const { language } = useLanguage()
+  const { setRole } = useRole()
+
+  // This is the teacher space
+  useEffect(() => {
+    setRole('teacher')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [backendAvailable, setBackendAvailable] = useState(false)
   const [filter, setFilter] = useState<FilterTab>('all')
@@ -196,6 +205,7 @@ export default function AssignmentsPage() {
   return (
     <Layout title="Assignments & Daily Targets" description="Set and review student assignments and daily targets">
       <div className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-8 max-w-6xl mx-auto w-full">
+        <TeacherNav />
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>

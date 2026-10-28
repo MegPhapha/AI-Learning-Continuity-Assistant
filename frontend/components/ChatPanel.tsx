@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect, KeyboardEvent, ChangeEvent } from 'react'
 import { Send, Paperclip, Mic, Trash2, Check, AlertCircle, BookOpen, User, Clock, Eye } from 'react-feather'
 import { motion, AnimatePresence } from 'framer-motion'
+import AnswerProvenance from './AnswerProvenance'
 import ReactMarkdown from 'react-markdown'
 
 // Styled markdown renderers so responses (headings, lists, code, quotes)
@@ -193,7 +194,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   const t = strings[language]
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-white rounded-2xl shadow-xl overflow-hidden">
+    <div className="flex-1 flex flex-col min-h-0 w-full max-w-4xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden">
       {/* Header */}
       <div className="shrink-0 flex flex-wrap items-center justify-between gap-2 p-3 sm:p-4 border-b border-slate-200 bg-gradient-to-r from-primary-50 to-secondary-50">
         <div className="flex items-center space-x-2 sm:space-x-4 min-w-0">
@@ -246,32 +247,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
         </div>
         
         <div className="flex items-center space-x-2">
-          {/* Language toggle */}
-          {onLanguageChange && (
-            <div className="flex bg-white rounded-lg p-1 border border-slate-200">
-              <button
-                onClick={() => onLanguageChange('en')}
-                className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${
-                  language === 'en'
-                    ? 'bg-primary-600 text-white'
-                    : 'text-slate-500 hover:bg-slate-100'
-                }`}
-              >
-                EN
-              </button>
-              <button
-                onClick={() => onLanguageChange('fr')}
-                className={`px-3 py-1 text-sm font-medium rounded-md transition-all ${
-                  language === 'fr'
-                    ? 'bg-primary-600 text-white'
-                    : 'text-slate-500 hover:bg-slate-100'
-                }`}
-              >
-                FR
-              </button>
-            </div>
-          )}
-          
+          {/* Language lives in the global TopBar */}
           <button
             type="button"
             onClick={handleClearChat}
@@ -351,7 +327,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
               {/* Fun starter prompts */}
               {selectedDocument && (
                 <div className="mt-5">
-                  <p className="text-xs text-slate-400 mb-2">
+                  <p className="text-xs text-slate-500 mb-2">
                     {language === 'fr' ? 'Essayez l\'un de ceux-ci :' : 'Try one of these:'}
                   </p>
                   <div className="flex flex-wrap justify-center gap-2">
@@ -395,7 +371,11 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                     className={`relative px-6 py-4 rounded-2xl shadow-sm ${
                       message.role === 'user'
                         ? 'bg-primary-600 text-white rounded-br-lg'
-                        : 'bg-white text-slate-700 rounded-bl-lg border border-slate-200'
+                        : message.verified === false
+                          // Unverified AI answers: dashed amber border so students
+                          // can tell them from grounded curriculum answers
+                          ? 'bg-white text-slate-700 rounded-bl-lg border-2 border-dashed border-amber-300'
+                          : 'bg-white text-slate-700 rounded-bl-lg border border-slate-200'
                     }`}
                   >
                     {/* User message */}
@@ -416,7 +396,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                           <BookOpen className="w-3 h-3 text-primary-600" />
                         </div>
                         <span className="text-xs text-slate-500">{t.aiTutor}</span>
-                        <span className="text-xs text-slate-400 ml-auto">
+                        <span className="text-xs text-slate-500 ml-auto">
                           {formatTime(message.timestamp)}
                         </span>
                       </div>
@@ -461,24 +441,12 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                         transition={{ delay: 0.3 }}
                         className="mt-4 pt-4 border-t border-slate-200 space-y-3"
                       >
-                        {/* Verification Status */}
-                        <div className="flex items-center space-x-2 text-sm">
-                          {message.verified !== undefined && (
-                            <>
-                              {message.verified ? (
-                                <div className="flex items-center space-x-1 text-green-600">
-                                  <Check className="w-4 h-4" />
-                                  <span className="text-xs">{t.verified}</span>
-                                </div>
-                              ) : (
-                                <div className="flex items-center space-x-1 text-amber-600">
-                                  <AlertCircle className="w-4 h-4" />
-                                  <span className="text-xs">{t.unverified}</span>
-                                </div>
-                              )}
-                            </>
-                          )}
-                        </div>
+                        {/* Verification Status — visually distinct provenance */}
+                        {message.verified !== undefined && (
+                          <div className="mb-2">
+                            <AnswerProvenance verified={message.verified} language={language} />
+                          </div>
+                        )}
 
                         {/* Practice Question */}
                         {message.metadata.practiceQuestion && (

@@ -669,8 +669,38 @@ def get_demo_response(document_id: str, message: str, language: str = "en", sess
                 "correct": True,
             })
         # Wrong attempt: if the message looks like an answer (short, no question
-        # mark, not a new topic request), prompt to try again and keep pending
-        looks_like_answer = "?" not in message and len(message) < 120
+        # mark, not a new topic request), prompt to try again and keep pending.
+        # Social messages ("ok", "thanks") and the suggested-activity text are
+        # not attempts — don't grade them.
+        is_social = bool(re.match(
+            r"^(hi|hello|hey|thanks|thank you|merci|bonjour|salut|ok|okay|cool|great|d'accord|bien)\b",
+            message_lower,
+        ))
+        known_activities = {
+            _norm_text(td.get("activity", ""))
+            for sts in DEMO_RESPONSES.values()
+            for lt in sts.values()
+            for td in lt.values()
+        }
+        is_activity = norm_message in known_activities
+        looks_like_answer = "?" not in message and len(message) < 120 and not is_social
+        if is_activity:
+            if language == "fr":
+                content = (
+                    "**Excellente activité !** 🌟\n\n"
+                    "Amusez-vous bien — et quand vous êtes prêt(e), envoyez-moi votre réponse à la question d'entraînement ! 💪"
+                )
+            else:
+                content = (
+                    "**Great activity choice!** 🌟\n\n"
+                    "Have fun with it — and when you're ready, send me your answer to the practice question! 💪"
+                )
+            return _respond(content, verified=True, sources=_grounded(), metadata={
+                "subject": doc["subject"],
+                "difficulty": "beginner",
+                "practice_question": pending["question"],
+                "awaiting_attempt": True,
+            })
         if looks_like_answer:
             # Hints are stored with a "Hint:"/"Indice:" prefix in some topics — strip it
             raw_hint = re.sub(r"^(hint|indice)\s*:?\s*", "", pending["hint"], flags=re.I)
@@ -1006,12 +1036,26 @@ def get_demo_response(document_id: str, message: str, language: str = "en", sess
 
     # ---- 6. Topic lesson (grounded in the curriculum) ----
     if matched_topic is not None:
-        return _respond(data.get("content", ""), verified=True, sources=_grounded(), metadata={
+        practice_q = data.get("practice")
+        meta = {
             "subject": doc["subject"],
             "difficulty": "beginner",
-            "practice_question": data.get("practice"),
+            "practice_question": practice_q,
             "revision_activity": data.get("activity"),
-        })
+        }
+        # Register the lesson's practice question as pending so the student's
+        # next answer is graded against it (the "Try this question" flow) —
+        # without this the attempt fell through to the LLM.
+        if practice_q:
+            expected = EXPECTED_ANSWERS.get(_norm_text(practice_q))
+            if expected:
+                _pending_practice[sid] = {
+                    "question": practice_q,
+                    "expected": expected,
+                    "hint": data.get("feedback", "Take your time and do your best!"),
+                }
+                meta["awaiting_attempt"] = True
+        return _respond(data.get("content", ""), verified=True, sources=_grounded(), metadata=meta)
 
     # ---- 7. Outside the canned topics: try the local LLM, then honest fallback ----
     llm_answer, model_label = get_llm_answer(message, doc.get("subject", "General"), doc.get("grade", "Grade 3"), language)

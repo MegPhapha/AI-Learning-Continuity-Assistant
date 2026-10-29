@@ -421,6 +421,7 @@ export default function StudentPage() {
           <ChatPanel
           messages={messages}
           onSendMessage={handleSendMessage}
+          onAttemptPractice={setPendingPractice}
           isLoading={isLoading}
           selectedDocument={selectedDocument ? {
             id: selectedDocument.id,

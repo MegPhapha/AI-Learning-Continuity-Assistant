@@ -74,6 +74,9 @@ interface ChatPanelProps {
   availableDocuments: Array<{ id: string; name: string; subject: string; grade: string }>
   language?: 'en' | 'fr'
   onLanguageChange?: (lang: 'en' | 'fr') => void
+  /** Registers which practice question the student is attempting, so the
+      server can grade their next message against it */
+  onAttemptPractice?: (question: string) => void
 }
 
 const ChatPanel: React.FC<ChatPanelProps> = ({
@@ -85,6 +88,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   availableDocuments,
   language = 'en',
   onLanguageChange,
+  onAttemptPractice,
 }) => {
   const [inputValue, setInputValue] = useState('')
   const [isComposing, setIsComposing] = useState(false)
@@ -462,8 +466,11 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                             <button
                               type="button"
                               onClick={() => {
-                                // Focus the input so the student can attempt the
-                                // question — do not send the question itself
+                                // Register the attempt so the server grades the
+                                // next message; focus the input. Do not send the
+                                // question itself as a student message.
+                                const q = message.metadata?.practiceQuestion
+                                if (q) onAttemptPractice?.(q)
                                 setInputValue(language === 'fr' ? 'Ma réponse est ' : 'My answer is ')
                                 requestAnimationFrame(() => inputRef.current?.focus())
                               }}

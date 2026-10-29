@@ -14,6 +14,7 @@ export default function Sidebar() {
   // student sidebar and vice versa.
   const studentLinks = [
     { name: fr ? 'Discussion élève' : 'Student Chat', href: '/student', icon: BookOpen },
+    { name: fr ? 'Mes devoirs & objectifs' : 'My Assignments', href: '/assignments', icon: Clipboard },
     { name: fr ? 'Aide' : 'Help', href: '/help', icon: HelpCircle },
     { name: fr ? 'Paramètres' : 'Settings', href: '/settings', icon: Settings },
   ]

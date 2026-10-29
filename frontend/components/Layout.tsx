@@ -22,6 +22,7 @@ function MobileNav() {
 
   const studentLinks = [
     { href: '/student', label: fr ? 'Chat' : 'Chat', icon: MessageCircle },
+    { href: '/assignments', label: fr ? 'Devoirs' : 'Targets', icon: Clipboard },
     { href: '/help', label: fr ? 'Aide' : 'Help', icon: HelpCircle },
     { href: '/settings', label: fr ? 'Réglages' : 'Settings', icon: Settings },
     { href: '/', label: fr ? 'Rôle' : 'Role', icon: Home },

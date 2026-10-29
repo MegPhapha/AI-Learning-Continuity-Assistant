@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Clipboard, Plus, X, Target, FileText, Clock, CheckCircle, Trash2, Eye, Users } from 'react-feather'
 import Layout from '../components/Layout'
 import TeacherNav from '../components/TeacherNav'
+import StudentAssignments from '../components/StudentAssignments'
 import { useLanguage } from '../components/LanguageContext'
 import { useRole } from '../components/RoleContext'
 import { translateSubject, translateGrade } from '../lib/i18n'
@@ -53,11 +54,11 @@ type FilterTab = 'all' | 'daily_target' | 'assignment' | 'review'
 
 export default function AssignmentsPage() {
   const { language } = useLanguage()
-  const { setRole } = useRole()
+  const { role, setRole } = useRole()
 
-  // This is the teacher space
+  // Default direct visits to the teacher view — but never override a student
   useEffect(() => {
-    setRole('teacher')
+    if (role !== 'student') setRole('teacher')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   const [assignments, setAssignments] = useState<Assignment[]>([])
@@ -204,6 +205,11 @@ export default function AssignmentsPage() {
 
   return (
     <Layout title="Assignments & Daily Targets" description="Set and review student assignments and daily targets">
+      {/* Students see their own read-only view; teachers get the management view */}
+      {role === 'student' ? (
+        <StudentAssignments language={language} />
+      ) : (
+      <>
       <div className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-8 max-w-6xl mx-auto w-full">
         <TeacherNav />
         {/* Header */}
@@ -556,6 +562,8 @@ export default function AssignmentsPage() {
           </motion.div>
         )}
       </AnimatePresence>
+      </>
+      )}
     </Layout>
   )
 }

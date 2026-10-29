@@ -1,13 +1,12 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/router'
 import ChatPanel from '../components/ChatPanel'
 import DailyChallenge, { DailyStats, levelFor } from '../components/DailyChallenge'
 import Celebration from '../components/Celebration'
 import Layout from '../components/Layout'
 import { useLanguage } from '../components/LanguageContext'
-import { translateSubject, translateGrade } from '../lib/i18n'
 import { Document } from '../types'
 import { ChatAPI, DocumentsAPI, healthCheck } from '../lib/api'
 import { AlertCircle, Zap, ChevronDown } from 'react-feather'
@@ -147,7 +146,11 @@ export default function StudentPage() {
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(DEMO_DOCUMENTS[0])
   const [availableDocuments, setAvailableDocuments] = useState<Document[]>(DEMO_DOCUMENTS)
   const { language, setLanguage } = useLanguage()
-  const [backendAvailable, setBackendAvailable] = useState(false)
+  // Backend connection: the backend is kept alive by launchd, so we start
+  // connected and only fall back to canned demo responses after several
+  // failed health checks — one transient failure (e.g. mid-restart) must
+  // not silently disconnect the tutor.
+  const [backendAvailable, setBackendAvailable] = useState(true)
   // Server session so the tutor can grade practice attempts in context
   const [sessionId, setSessionId] = useState<string | null>(null)
   // Practice question the student is currently attempting (if any)
@@ -205,60 +208,39 @@ export default function StudentPage() {
     })
   }
 
-  // Check backend availability
+  // Check backend availability (with retries) and load documents
   useEffect(() => {
-    healthCheck().then(setBackendAvailable)
+    let cancelled = false
+    const check = async (attempt: number) => {
+      const ok = await healthCheck()
+      if (cancelled) return
+      if (ok) {
+        setBackendAvailable(true)
+        return
+      }
+      if (attempt < 4) {
+        setTimeout(() => check(attempt + 1), 800 * (attempt + 1))
+        return
+      }
+      // Backend really seems down — switch to the canned demo responses
+      setBackendAvailable(false)
+    }
+    check(0)
     // Load real documents if backend is available
     DocumentsAPI.getDemoDocuments()
-      .then(setAvailableDocuments)
-      .catch(() => setAvailableDocuments(DEMO_DOCUMENTS))
+      .then((docs) => { if (!cancelled) setAvailableDocuments(docs) })
+      .catch(() => { if (!cancelled) setAvailableDocuments(DEMO_DOCUMENTS) })
+    return () => { cancelled = true }
   }, [])
 
-  // Initialize chat with selected document
-  // Initialize chat with the selected document only — switching language
-  // must NOT wipe the conversation
-  useEffect(() => {
-    if (selectedDocument) {
-      setMessages([
-        {
-          id: 'welcome-' + Date.now(),
-          role: 'assistant',
-          content: language === 'fr'
-            ? `Bonjour ! Je suis votre assistant d'apprentissage IA pour **${selectedDocument.subject} - ${selectedDocument.grade}**. Posez-moi des questions sur votre programme.`
-            : `Hello! I'm your AI Learning Assistant for **${selectedDocument.subject} - ${selectedDocument.grade}**. Ask me questions about your curriculum.`,
-          timestamp: new Date(),
-          verified: true,
-          sources: [{ docName: selectedDocument.name, page: 1 }],
-        },
-      ])
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDocument])
+  // The fancy welcome screen (with clickable curriculum buttons and starter
+  // prompts) lives in ChatPanel and shows whenever there are no messages.
+  // We intentionally do NOT push a greeting bubble on load or document
+  // selection — it used to replace the welcome seconds after refresh.
 
-  // Language is switched from the global TopBar: keep an existing
-  // conversation, but re-greet in the new language if the chat hasn't started
-  const isFirstRender = useRef(true)
-  useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false
-      return
-    }
-    if (messages.length <= 1 && messages[0]?.id.startsWith('welcome-') && selectedDocument) {
-      setMessages([
-        {
-          id: 'welcome-' + Date.now(),
-          role: 'assistant' as const,
-          content: language === 'fr'
-            ? `Bonjour ! Je suis votre assistant d'apprentissage IA pour **${translateSubject(selectedDocument.subject, language)} - ${translateGrade(selectedDocument.grade, language)}**. Posez-moi des questions sur votre programme.`
-            : `Hello! I'm your AI Learning Assistant for **${translateSubject(selectedDocument.subject, language)} - ${translateGrade(selectedDocument.grade, language)}**. Ask me questions about your curriculum.`,
-          timestamp: new Date(),
-          verified: true,
-          sources: [{ docName: selectedDocument.name, page: 1 }],
-        },
-      ])
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [language])
+  // Language is switched from the global TopBar. The welcome screen and all
+  // UI strings react to the language automatically; an existing conversation
+  // is kept as-is.
 
   const handleSendMessage = async (content: string) => {
     if (!content.trim() || !selectedDocument) return

@@ -72,7 +72,7 @@ export default function RoleSelectionPage() {
         </div>
 
         {/* Continue shortcut for a previously chosen role */}
-        {savedRole && savedRole !== role && (
+        {savedRole && (
           <Link
             href={savedRole === 'student' ? '/student' : '/teacher'}
             onClick={() => setRole(savedRole)}

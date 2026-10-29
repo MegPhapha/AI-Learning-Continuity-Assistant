@@ -6,7 +6,7 @@ import { BookOpen, Home, MessageCircle, Users, FileText, Clipboard, Settings, He
 import Sidebar from './Sidebar'
 import TopBar from './TopBar'
 import { useLanguage } from './LanguageContext'
-import { RoleProvider, useRole } from './RoleContext'
+import { useRole } from './RoleContext'
 
 interface LayoutProps {
   children: ReactNode
@@ -33,7 +33,8 @@ function MobileNav() {
     { href: '/settings', label: fr ? 'Réglages' : 'Settings', icon: Settings },
     { href: '/', label: fr ? 'Rôle' : 'Role', icon: Home },
   ]
-  const mobileLinks = role === 'student' ? studentLinks : role === 'teacher' ? teacherLinks : [...studentLinks.slice(0, 1), ...teacherLinks.slice(0, 3), { href: '/help', label: fr ? 'Aide' : 'Help', icon: HelpCircle }, { href: '/', label: fr ? 'Rôle' : 'Role', icon: Home }]
+  // Neutral when no role is chosen — never mix teacher links into the student view
+  const mobileLinks = role === 'student' ? studentLinks : role === 'teacher' ? teacherLinks : [studentLinks[3]]
 
   return (
     <div className="md:hidden shrink-0 bg-white border-b border-slate-200">
@@ -92,11 +93,7 @@ function Shell({ children, title, description }: LayoutProps) {
 }
 
 export default function Layout(props: LayoutProps) {
-  // Language is global via LanguageProvider in _app; the role scope lives here
-  // because only the Layout tree (sidebar, top bar, pages) consumes it.
-  return (
-    <RoleProvider>
-      <Shell {...props} />
-    </RoleProvider>
-  )
+  // Language and role are both global (providers live in _app) so navigation
+  // never resets them and the sidebar stays in the right role space.
+  return <Shell {...props} />
 }

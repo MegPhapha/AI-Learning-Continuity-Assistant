@@ -329,31 +329,45 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                 ))}
               </div>
 
-              {/* Fun starter prompts */}
+              {/* Fun starter prompts — subject-aware, sent with one click */}
               {selectedDocument && (
                 <div className="mt-5">
                   <p className="text-xs text-slate-500 mb-2">
                     {language === 'fr' ? 'Essayez l\'un de ceux-ci :' : 'Try one of these:'}
                   </p>
                   <div className="flex flex-wrap justify-center gap-2">
-                    {[
-                      language === 'fr' ? 'Parlez-moi des plantes 🌱' : 'Tell me about plants 🌱',
-                      language === 'fr' ? 'Combien font 7 x 8 ? ✖️' : 'What is 7 x 8? ✖️',
-                      language === 'fr' ? 'Donnez-moi une question d\'entraînement 🎯' : 'Give me a practice question 🎯',
-                    ].map((prompt) => (
-                      <motion.button
-                        key={prompt}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => {
-                          setInputValue(prompt.replace(/[🌱✖️🎯]\s*$/, '').trim())
-                          requestAnimationFrame(() => inputRef.current?.focus())
-                        }}
-                        className="px-3.5 py-1.5 bg-white border-2 border-dashed border-primary-200 text-primary-600 rounded-full text-xs font-medium hover:border-primary-400 transition-colors"
-                      >
-                        {prompt}
-                      </motion.button>
-                    ))}
+                    {(() => {
+                      const subj = (selectedDocument.subject || '').toLowerCase()
+                      const fr = language === 'fr'
+                      let prompts: Array<[string, string]>
+                      if (subj.includes('science')) {
+                        prompts = fr
+                          ? [['🌱 Parlez-moi des plantes', 'Tell me about plants'], ['💧 Le cycle de l\'eau', 'What is the water cycle?'], ['🎯 Question d\'entraînement', 'Give me a practice question']]
+                          : [['🌱 Tell me about plants', 'Tell me about plants'], ['💧 The water cycle', 'What is the water cycle?'], ['🎯 Practice question', 'Give me a practice question']]
+                      } else if (subj.includes('health')) {
+                        prompts = fr
+                          ? [['🧼 Pourquoi se laver les mains ?', 'Why is hand washing important?'], ['🍎 Rester en bonne santé', 'How can I stay healthy?'], ['🎯 Question d\'entraînement', 'Give me a practice question']]
+                          : [['🧼 Why wash your hands?', 'Why is hand washing important?'], ['🍎 Staying healthy', 'How can I stay healthy?'], ['🎯 Practice question', 'Give me a practice question']]
+                      } else {
+                        prompts = fr
+                          ? [['✖️ Combien font 7 x 8 ?', 'Combien font 7 x 8 ?'], ['🍕 Expliquez les fractions', 'Expliquez les fractions'], ['🎯 Question d\'entraînement', 'Donnez-moi une question d\'entraînement']]
+                          : [['✖️ What is 7 x 8?', 'What is 7 x 8?'], ['🍕 Explain fractions', 'Explain fractions'], ['🎯 Practice question', 'Give me a practice question']]
+                      }
+                      return prompts.map(([label, text]) => (
+                        <motion.button
+                          key={label}
+                          type="button"
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => {
+                            if (!isLoading) onSendMessage(text)
+                          }}
+                          className="px-3.5 py-1.5 bg-white border-2 border-dashed border-primary-200 text-primary-600 rounded-full text-xs font-medium hover:border-primary-400 transition-colors"
+                        >
+                          {label}
+                        </motion.button>
+                      ))
+                    })()}
                   </div>
                 </div>
               )}

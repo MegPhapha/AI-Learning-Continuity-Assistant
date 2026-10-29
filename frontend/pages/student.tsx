@@ -7,6 +7,7 @@ import DailyChallenge, { DailyStats, levelFor } from '../components/DailyChallen
 import Celebration from '../components/Celebration'
 import Layout from '../components/Layout'
 import { useLanguage } from '../components/LanguageContext'
+import { translateSubject, translateGrade } from '../lib/i18n'
 import { Document } from '../types'
 import { ChatAPI, DocumentsAPI, healthCheck } from '../lib/api'
 import { AlertCircle, Zap, ChevronDown } from 'react-feather'
@@ -350,7 +351,22 @@ export default function StudentPage() {
 
   const handleDocumentSelect = (doc: Document) => {
     setSelectedDocument(doc)
-    setMessages([])
+    // New curriculum = fresh chat: reset the session so old practice
+    // state can't leak in, and land the student in the subject's chat
+    setSessionId(null)
+    setPendingPractice(null)
+    setMessages([
+      {
+        id: 'greet-' + Date.now(),
+        role: 'assistant',
+        content: language === 'fr'
+          ? `Bonjour ! Je suis votre assistant d'apprentissage IA pour **${translateSubject(doc.subject, language)} - ${translateGrade(doc.grade, language)}**. Posez-moi des questions sur votre programme.`
+          : `Hello! I'm your AI Learning Assistant for **${translateSubject(doc.subject, language)} - ${translateGrade(doc.grade, language)}**. Ask me questions about your curriculum.`,
+        timestamp: new Date(),
+        verified: true,
+        sources: [{ docName: doc.name, page: 1 }],
+      },
+    ])
   }
 
   return (

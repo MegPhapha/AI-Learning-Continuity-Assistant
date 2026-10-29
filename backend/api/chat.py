@@ -393,84 +393,7 @@ EXPECTED_ANSWERS: dict = {
         "any": [r"wash|lavez|hygiene|hygiène", r"eat|manger|fruit|vegetable|légume", r"exercis|sport|jouer", r"sleep|dormir", r"water|eau|drink|boire", r"brush|brosse|dents"],
         "answer": "Any healthy habit counts (washing hands, eating well, exercising, sleeping enough…)",
     },
-    _norm_text("Essayez ceci: 456 + 289 = ?"): {"number": 745, "answer": "456 + 289 = 745"},
-    _norm_text("Quelle est la somme de 15 + 27?"): {"number": 42, "answer": "15 + 27 = 42"},
-    _norm_text("Quel est le processus appelé quand l'eau se transforme en vapeur?"): {
-        "all": [r"é?vaporation"], "answer": "L'évaporation",
-    },
-    _norm_text("Nommez les trois états de l'eau."): {
-        "all": [r"solide|solid|glace|ice", r"liquide|liquid", r"gaz|gas|vapeur|vapor"],
-        "answer": "Solide (glace), liquide (eau), et gaz (vapeur d'eau)",
-    },
-    _norm_text("Que libèrent les plantes pendant la journée et dont nous avons besoin pour respirer ?"): {
-        "all": [r"oxyg"], "answer": "L'oxygène",
-    },
-    _norm_text("Quelle partie de la plante fabrique la nourriture grâce au soleil ?"): {
-        "all": [r"feuille|leaf"], "answer": "Les feuilles",
-    },
-    _norm_text("Quel outil utiliseriez-vous pour mesurer s'il fait chaud ou froid ?"): {
-        "all": [r"thermom"], "answer": "Le thermomètre",
-    },
-    _norm_text("Comment dit-on 'merci' en français?"): {
-        "all": [r"merci"], "answer": "Merci",
-    },
-    _norm_text("Combien de temps devriez-vous frotter vos mains?"): {
-        "number": 20, "answer": "Environ 20 secondes (le temps de chanter Joyeux Anniversaire deux fois)",
-    },
-    _norm_text("Nommez une chose que vous pouvez faire pour rester en bonne santé."): {
-        "any": [r"lavez|wash|hygiène", r"manger|eat|fruit|légume", r"exercice|sport|jouer", r"dormir|sleep", r"eau|water|boire", r"brosse|dents|brush"],
-        "answer": "Toute bonne habitude compte (se laver les mains, bien manger, bouger, dormir…)",
-    },
-}
-
-
-def _grade_answer(message: str, expected: dict) -> bool:
-    """Check a student's answer attempt against the expected answer spec"""
-    norm = _norm_text(message)
-    if not norm:
-        return False
-    if "number" in expected:
-        return str(expected["number"]) in re.findall(r"\d+", norm)
-    for kw in expected.get("all", []):
-        if not re.search(kw, norm):
-            return False
-    if expected.get("any"):
-        if not any(re.search(kw, norm) for kw in expected["any"]):
-            return False
-    return True
-
-
-# Expected answers for the seeded practice questions. Keywords are regex
-# fragments matched against the normalized answer; "number" extracts digits.
-EXPECTED_ANSWERS: dict = {
-    _norm_text("What is 8 × 5?"): {"number": 40, "answer": "8 × 5 = 40"},
-    _norm_text("What is 15 + 27?"): {"number": 42, "answer": "15 + 27 = 42"},
-    _norm_text("What is the process called when water turns into vapor?"): {
-        "all": [r"evaporat"], "answer": "Evaporation",
-    },
-    _norm_text("Name the three states of water."): {
-        "all": [r"solid|solide|ice|glace", r"liquid|liquide", r"gas|gaz|vapor|vapeur"],
-        "answer": "Solid (ice), liquid (water), and gas (water vapor)",
-    },
-    _norm_text("What do plants release during the day that we need to breathe?"): {
-        "all": [r"oxyg"], "answer": "Oxygen",
-    },
-    _norm_text("Which part of the plant makes food using sunlight?"): {
-        "all": [r"leaf|leaves|feuille"], "answer": "The leaves",
-    },
-    _norm_text("Which tool would you use to measure how hot or cold it is?"): {
-        "all": [r"thermom"], "answer": "A thermometer",
-    },
-    _norm_text("How do you say 'thank you' in French?"): {
-        "all": [r"merci"], "answer": "Merci",
-    },
-    _norm_text("How long should you scrub your hands?"): {
-        "number": 20, "answer": "About 20 seconds (as long as singing Happy Birthday twice)",
-    },
-    _norm_text("Name one thing you can do to stay healthy."): {
-        "any": [r"wash|lavez|hygiene|hygiène", r"eat|manger|fruit|vegetable|légume", r"exercis|sport|jouer", r"sleep|dormir", r"water|eau|drink|boire", r"brush|brosse|dents"],
-        "answer": "Any healthy habit counts (washing hands, eating well, exercising, sleeping enough…)",
-    },
+    _norm_text("Try this: 456 + 289 = ?"): {"number": 745, "answer": "456 + 289 = 745"},
     _norm_text("Essayez ceci: 456 + 289 = ?"): {"number": 745, "answer": "456 + 289 = 745"},
     _norm_text("Try this: 523 - 178 = ?"): {"number": 345, "answer": "523 - 178 = 345"},
     _norm_text("Essayez ceci: 523 - 178 = ?"): {"number": 345, "answer": "523 - 178 = 345"},
@@ -556,7 +479,9 @@ def _parse_exercise(message: str, message_lower: str):
     Returns (a, op, b) or None. "times"/"fois" normalize to multiplication.
     """
     m = (
-        re.search(r"(\d+)\s*([+\-*×]|\bx\b)\s*(\d+)\s*=\s*\?", message)
+        # A bare expression typed on its own ("7888+7777", "245 + 178", "7 x 8")
+        re.search(r"^\s*(\d+)\s*([+\-*×]|\bx\b)\s*(\d+)\s*[?.!]*\s*$", message)
+        or re.search(r"(\d+)\s*([+\-*×]|\bx\b)\s*(\d+)\s*=\s*\?", message)
         or re.search(r"what\s+is\s+(\d+)\s*([+\-*×]|\bx\b|times)\s*(\d+)", message_lower)
         or re.search(r"combien\s+(?:font|fait)\s+(\d+)\s*([+\-*×]|\bx\b|fois)\s*(\d+)", message_lower)
         or re.search(r"quelle\s+est\s+la\s+somme\s+de\s+(\d+)\s*(\+|et)\s*(\d+)", message_lower)

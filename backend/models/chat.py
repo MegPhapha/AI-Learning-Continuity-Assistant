@@ -26,6 +26,7 @@ class Metadata(CamelModel):
     graded: Optional[bool] = Field(default=False, description="Whether this response grades a student's attempt")
     correct: Optional[bool] = Field(default=None, description="Whether the graded attempt was correct")
     awaiting_attempt: Optional[bool] = Field(default=False, description="Whether the tutor is waiting for the student to attempt the practice question")
+    model: Optional[str] = Field(default=None, description="The AI model that produced this answer (shown to students)")
 
 
 class MessageBase(CamelModel):

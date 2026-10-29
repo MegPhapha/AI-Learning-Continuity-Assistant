@@ -37,25 +37,69 @@ _sessions: dict = {}
 # Pending practice question per session: session_id -> question state
 _pending_practice: dict = {}
 
-# Optional local LLM (e.g. Ollama) for questions outside the canned topics.
-# Set OLLAMA_URL / OLLAMA_MODEL to configure; if unreachable we fall back to
-# the honest "I can't answer that yet" reply.
+# AI answer backends, in priority order:
+#   1. Mistral API (api.mistral.ai) when MISTRAL_API_KEY is set — real Mistral
+#      models hosted in the EU; ideal when connectivity exists.
+#   2. Local Ollama models (mistral first, then lighter fallbacks) — fully
+#      offline sovereignty when there is no network.
+# If none answer, the tutor gives its honest "I can't answer that yet" reply.
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2")
+MISTRAL_API_KEY = os.environ.get("MISTRAL_API_KEY", "")
+MISTRAL_API_MODEL = os.environ.get("MISTRAL_API_MODEL", "ministral-3b-latest")
 
 
-def get_llm_answer(question: str, subject: str, grade: str, language: str) -> str | None:
-    """Ask a local Ollama model to answer the student's question.
-    Tries the configured model (e.g. Mistral) first, then known fallbacks.
-    Returns None if no model backend is available."""
-    prompt = (
+def _tutor_prompt(question: str, subject: str, grade: str, language: str) -> str:
+    return (
         f"You are a kind, encouraging tutor for {grade} students, teaching {subject}. "
         f"Answer in {'French' if language == 'fr' else 'English'} in at most 150 words, "
         "at a Grade 3 reading level, with simple examples. "
         f"Question: {question}"
     )
+
+
+def get_mistral_api_answer(prompt: str) -> str | None:
+    """Ask Mistral's hosted API (EU infrastructure) using MISTRAL_API_KEY."""
+    if not MISTRAL_API_KEY:
+        return None
+    payload = json.dumps({
+        "model": MISTRAL_API_MODEL,
+        "messages": [{"role": "user", "content": prompt}],
+        "max_tokens": 300,
+        "temperature": 0.4,
+    }).encode()
+    req = urllib.request.Request(
+        "https://api.mistral.ai/v1/chat/completions",
+        data=payload,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {MISTRAL_API_KEY}",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=25) as resp:
+            data = json.loads(resp.read().decode())
+            return (data.get("choices") or [{}])[0].get("message", {}).get("content", "").strip() or None
+    except Exception:
+        return None
+
+
+def get_llm_answer(question: str, subject: str, grade: str, language: str) -> tuple[str | None, str | None]:
+    """Answer an off-curriculum question.
+
+    Returns (answer, model_label) where model_label describes which backend
+    answered (e.g. "Mistral Ministral 3B (EU)" or "local model") so students
+    and teachers always know where an answer came from.
+    """
+    prompt = _tutor_prompt(question, subject, grade, language)
+
+    # 1. Mistral's own API — real Mistral model, EU-hosted
+    api_answer = get_mistral_api_answer(prompt)
+    if api_answer:
+        return api_answer, f"Mistral {MISTRAL_API_MODEL.replace('-latest', '')} (EU)"
+
+    # 2. Local Ollama models — fully offline fallback chain
     models = [OLLAMA_MODEL, "mistral", "llama3.2"]
-    # Try in order, skipping duplicates and models that are not installed
     seen = set()
     for model in models:
         if model in seen:
@@ -77,10 +121,11 @@ def get_llm_answer(question: str, subject: str, grade: str, language: str) -> st
                 data = json.loads(resp.read().decode())
                 answer = (data.get("response") or "").strip()
                 if answer:
-                    return answer
+                    label = f"Mistral 7B (local)" if "mistral" in model else "local model"
+                    return answer, label
         except Exception:
             continue
-    return None
+    return None, None
 
 
 # Demo responses based on document and query
@@ -836,11 +881,12 @@ def get_demo_response(document_id: str, message: str, language: str = "en", sess
         })
 
     # ---- 7. Outside the canned topics: try the local LLM, then honest fallback ----
-    llm_answer = get_llm_answer(message, doc.get("subject", "General"), doc.get("grade", "Grade 3"), language)
+    llm_answer, model_label = get_llm_answer(message, doc.get("subject", "General"), doc.get("grade", "Grade 3"), language)
     if llm_answer:
         return _respond(llm_answer, verified=False, sources=[], metadata={
             "subject": doc["subject"],
             "difficulty": "beginner",
+            "model": model_label,
         })
 
     if language == "fr":

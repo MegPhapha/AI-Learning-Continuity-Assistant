@@ -5,6 +5,14 @@
 set -e
 cd "$(dirname "$0")"
 
+# Load optional environment (MISTRAL_API_KEY etc.) from .env if present
+if [ -f .env ]; then
+  set -a
+  source .env
+  set +a
+  echo "    Loaded .env"
+fi
+
 echo "==> Checking Ollama (local AI model server)..."
 if ! curl -s --max-time 3 http://localhost:11434/api/version > /dev/null 2>&1; then
   echo "    Starting Ollama..."

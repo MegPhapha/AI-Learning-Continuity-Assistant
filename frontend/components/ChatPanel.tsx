@@ -61,6 +61,7 @@ export interface Message {
     graded?: boolean
     correct?: boolean
     awaitingAttempt?: boolean
+    model?: string
   }
 }
 
@@ -444,7 +445,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                         {/* Verification Status — visually distinct provenance */}
                         {message.verified !== undefined && (
                           <div className="mb-2">
-                            <AnswerProvenance verified={message.verified} language={language} />
+                            <AnswerProvenance verified={message.verified} language={language} model={message.metadata?.model} />
                           </div>
                         )}
 

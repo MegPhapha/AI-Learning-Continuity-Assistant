@@ -18,6 +18,23 @@ A unified web portal with two roles behind one login page:
 | AI | Ollama local models (llama3.2 default; Mistral 7B supported when RAM allows) |
 | Tunneling | ngrok (for demos) |
 
+## AI architecture (Mistral-first)
+
+Student data stays local by default. Off-curriculum questions are answered by Mistral models, in this order:
+
+1. **Mistral API** (`ministral-3b-latest` by default — Mistral's edge model family) hosted on Mistral's EU infrastructure — used when a `MISTRAL_API_KEY` is configured and connectivity exists
+2. **Local Mistral 7B / smaller local models via Ollama** — fully offline fallback for low-connectivity schools
+3. Honest refusal — if no model can answer, the tutor says so rather than guessing
+
+Every AI answer is **labelled in the UI** with the model that produced it ("Answered by Mistral Ministral 3B (EU)"), and is visually distinct from curriculum-verified answers.
+
+To enable the Mistral API layer:
+
+```bash
+echo "MISTRAL_API_KEY=your_key_from_console.mistral.ai" > .env
+./start.sh
+```
+
 ## Quick start
 
 ```bash

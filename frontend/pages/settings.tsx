@@ -43,8 +43,21 @@ export default function SettingsPage() {
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system')
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [soundEnabled, setSoundEnabled] = useState(true)
+  const [resetDone, setResetDone] = useState(false)
 
   const fr = language === 'fr'
+
+  // Clears the browser's saved demo progress (XP, level, streaks) and the
+  // saved role, so the next visit starts from the role-choice landing page.
+  const resetDemoData = () => {
+    try {
+      window.localStorage.removeItem('daily-stats')
+      window.localStorage.removeItem('app-role')
+      setResetDone(true)
+    } catch {
+      // storage unavailable — nothing to reset
+    }
+  }
 
   const settingsSections = [
     {
@@ -296,6 +309,34 @@ export default function SettingsPage() {
                           </button>
                         </div>
                       </>
+                    )}
+
+                    {section.id === 'privacy' && (
+                      <div className="flex items-center justify-between gap-4 flex-wrap">
+                        <div>
+                          <p className="font-medium text-slate-700">
+                            {language === 'fr' ? 'Réinitialiser les données de démonstration' : 'Reset demo data'}
+                          </p>
+                          <p className="text-sm text-slate-500">
+                            {language === 'fr'
+                              ? 'Efface la progression enregistrée (XP, niveau, série) et le rôle choisi. La prochaine visite commencera sur la page de choix du rôle.'
+                              : 'Clears your saved progress (XP, level, streak) and chosen role. Your next visit starts on the role-choice page.'}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={resetDemoData}
+                          className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
+                            resetDone
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : 'bg-slate-800 text-white hover:bg-slate-900'
+                          }`}
+                        >
+                          {resetDone
+                            ? (language === 'fr' ? '✓ Réinitialisé' : '✓ Reset')
+                            : (language === 'fr' ? 'Réinitialiser' : 'Reset')}
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>

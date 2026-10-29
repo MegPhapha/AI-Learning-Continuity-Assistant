@@ -815,23 +815,28 @@ def get_demo_response(document_id: str, message: str, language: str = "en", sess
     # ---- 4. Topic keyword matching (first matching topic wins) ----
     topic_keywords = [
         ("osmosis", ["osmosis", "osmose", "raisin", "absorb"]),
-        ("machines", ["machine", "lever", "pulley", "poulie", "levier", "inclined", "rampe", "see-saw", "balançoire"]),
+        ("machines", ["machine", "machines", "lever", "levers", "pulley", "pulleys", "poulie", "levier", "inclined", "rampe", "see-saw", "balançoire"]),
         ("plantwater", ["plants need water", "plant needs water", "besoin d'eau", "pourquoi les plantes ont besoin"]),
-        ("matter", ["matter", "states of", "state of", "matière", "états de la", "freeze", "melt", "steam", "geler", "fondre", "vapeur", "solide", "liquide"]),
-        ("oxygen", ["oxygen", "oxygène", "air", "breathe", "respir", "lung", "poumon"]),
-        ("plants", ["plant", "plante", "seed", "graine", "leaf", "leaves", "feuille", "flower", "fleur", "photosynthesis", "photosynthèse", "tree", "arbre", "root", "racine"]),
-        ("weather", ["weather", "climate", "season", "rain", "météo", "climat", "saison", "cloud", "nuage", "wind", "vent", "storm", "orage", "thermometer", "thermomètre"]),
+        ("matter", ["matter", "states of", "state of", "matière", "états de la", "freeze", "freezing", "melt", "melting", "steam", "geler", "fondre", "vapeur", "solide", "liquide"]),
+        ("oxygen", ["oxygen", "oxygène", "air", "breathe", "breathing", "respir", "lung", "lungs", "poumon"]),
+        ("plants", ["plant", "plants", "plante", "seed", "seeds", "graine", "leaf", "leaves", "feuille", "flower", "flowers", "fleur", "photosynthesis", "photosynthèse", "tree", "trees", "arbre", "root", "roots", "racine"]),
+        ("weather", ["weather", "climate", "season", "seasons", "rain", "rainy", "rainbow", "rainbows", "météo", "climat", "saison", "cloud", "clouds", "cloudy", "nuage", "wind", "winds", "windy", "storm", "storms", "orage", "thermometer", "thermomètre"]),
         ("water", ["water", "cycle", "eau", "evaporation", "évaporation", "condensation", "puddle", "flaque"]),
-        ("fractions", ["fraction", "half", "halves", "quarter", "quarters", "demi", "quart", "1/2", "1/4", "pizza", "slice", "part", "moitié"]),
-        ("subtract", ["subtract", "minus", "soustraction", "moins", "borrow", "emprunt", "take away", "difference", "différence", "enlever"]),
+        ("fractions", ["fraction", "fractions", "half", "halves", "quarter", "quarters", "demi", "quart", "1/2", "1/4", "pizza", "slice", "moitié"]),
+        ("subtract", ["subtract", "subtraction", "minus", "soustraction", "moins", "borrow", "borrowing", "emprunt", "take away", "difference", "différence", "enlever"]),
         ("multiply", ["multiply", "multiplication", "multiplie", "times", "×", "*"]),
-        ("add", ["add", "addition", "additionne", "sum", "somme", "+", "carry", "retenue"]),
-        ("wash", ["wash", "hygiene", "hygiène", "lavage", "germ", "microbe", "savon", "soap", "sick", "malade", "disease", "maladie"]),
+        ("add", ["add", "adding", "addition", "additions", "additionne", "sum", "sums", "somme", "+", "carry", "carrying", "retenue"]),
+        ("wash", ["wash", "washing", "hygiene", "hygiène", "lavage", "germ", "germs", "microbe", "savon", "soap", "sick", "malade", "disease", "maladie"]),
     ]
     data = lang_data.get("default", {})
     matched_topic = None
     for topic_key, keywords in topic_keywords:
-        if topic_key in lang_data and any(k in message_lower for k in keywords):
+        # Word-boundary matching for word keywords (so "vent" no longer matches
+        # "invented"); symbols like "+" stay substring matches.
+        if topic_key in lang_data and any(
+            (re.search(r"\b" + re.escape(k) + r"\b", message_lower) if any(c.isalpha() for c in k) else (k in message_lower))
+            for k in keywords
+        ):
             data = lang_data[topic_key]
             matched_topic = topic_key
             break

@@ -550,6 +550,31 @@ def _grade_answer(message: str, expected: dict) -> bool:
     return True
 
 
+def _parse_exercise(message: str, message_lower: str):
+    """Recognize arithmetic exercise questions in EN and FR phrasings.
+
+    Returns (a, op, b) or None. "times"/"fois" normalize to multiplication.
+    """
+    m = (
+        re.search(r"(\d+)\s*([+\-*×]|\bx\b)\s*(\d+)\s*=\s*\?", message)
+        or re.search(r"what\s+is\s+(\d+)\s*([+\-*×]|\bx\b|times)\s*(\d+)", message_lower)
+        or re.search(r"combien\s+(?:font|fait)\s+(\d+)\s*([+\-*×]|\bx\b|fois)\s*(\d+)", message_lower)
+        or re.search(r"quelle\s+est\s+la\s+somme\s+de\s+(\d+)\s*(\+|et)\s*(\d+)", message_lower)
+        or re.search(r"(?:add|adding|additionne|additionnez)\s+(\d+)\s+(and|et|\+)\s+(\d+)", message_lower)
+    )
+    if m:
+        a, op, b = m.group(1), m.group(2), m.group(3)
+        if op in ("times", "fois"):
+            op = "*"
+        elif op in ("et", "and"):
+            op = "+"
+        return a, op, b
+    m = re.search(r"(?:subtract|soustraire|soustrayez)\s+(\d+)\s+(?:from|de)\s+(\d+)", message_lower)
+    if m:
+        return m.group(2), "-", m.group(1)
+    return None
+
+
 def _topic_list(lang_data: dict, language: str) -> str:
     """List the topics this demo tutor can teach for the given document/language"""
     topics = [k for k in lang_data.keys() if k != "default"]
@@ -719,11 +744,7 @@ def get_demo_response(document_id: str, message: str, language: str = "en", sess
                         })
 
     # ---- 3. Student sends an exercise (e.g. "456 + 289 = ?") → guide, then grade ----
-    exercise_match = (
-        re.search(r"(\d+)\s*([+\-*×]|\bx\b)\s*(\d+)\s*=\s*\?", message)
-        or re.search(r"what\s+is\s+(\d+)\s*([+\-*×]|\bx\b)\s*(\d+)", message_lower)
-        or re.search(r"quelle\s+est\s+la\s+somme\s+de\s+(\d+)\s*(\+)\s*(\d+)", message_lower)
-    )
+    exercise_match = _parse_exercise(message, message_lower)
     # If the student sends a known practice question (e.g. by clicking the
     # "Try this question" button), prompt them to attempt it — do NOT teach
     # the full lesson, which would give the answer away.
@@ -764,7 +785,7 @@ def get_demo_response(document_id: str, message: str, language: str = "en", sess
         exercise_match
     )
     if is_exercise and exercise_match:
-        a, op, b = int(exercise_match.group(1)), exercise_match.group(2), int(exercise_match.group(3))
+        a, op, b = int(exercise_match[0]), exercise_match[1], int(exercise_match[2])
         if op in ("×", "*", "x"):
             result, sign = a * b, "×"
         elif op == "-":
@@ -772,29 +793,134 @@ def get_demo_response(document_id: str, message: str, language: str = "en", sess
         else:
             result, sign = a + b, "+"
         question = f"{a} {sign} {b} = ?"
+        # Operation-aware coaching: the hint must match the operation and the
+        # size of the numbers ("align by place value" is nonsense for 7 × 8).
+        # The answer itself is never revealed — the student still attempts it.
+        fr = language == "fr"
+        if op in ("×", "*", "x"):
+            if a <= 12 and b <= 12:
+                groups = " + ".join([str(b)] * min(a, 10)) + (f" + … ({a - 10} fois encore)" if a > 10 else "")
+                if fr:
+                    content = (
+                        "**À vous de jouer !** 🎯\n\n"
+                        f"Calculez **{question}**\n\n"
+                        f"💡 **Indice :** {a} × {b}, c'est {a} groupes de {b} : {groups}\n\n"
+                        "Additionnez le tout et envoyez-moi votre réponse ! 💪"
+                    )
+                    hint = f"{a} × {b}, c'est {a} groupes de {b} — additionnez-les !"
+                else:
+                    groups = " + ".join([str(b)] * min(a, 10)) + (f" + … ({a - 10} more)" if a > 10 else "")
+                    content = (
+                        "**Your turn to try!** 🎯\n\n"
+                        f"Work out **{question}**\n\n"
+                        f"💡 **Hint:** {a} × {b} means {a} groups of {b}: {groups}\n\n"
+                        "Add them all up and send me your answer! 💪"
+                    )
+                    hint = f"{a} × {b} means {a} groups of {b} — add them up!"
+            else:
+                layout = f"```text\n  {a}\n× {b}\n-----\n```"
+                if fr:
+                    content = (
+                        "**À vous de jouer !** 🎯\n\n"
+                        f"Calculez **{question}** :\n\n{layout}\n\n"
+                        "1. **Multipliez la colonne des unités**\n"
+                        "2. **Puis les dizaines**\n"
+                        "3. **Retenez** quand un produit dépasse 9\n\n"
+                        "Envoyez-moi votre réponse et je vérifierai ! 💪"
+                    )
+                    hint = "Multipliez colonne par colonne en partant des unités, et retenez si besoin !"
+                else:
+                    content = (
+                        "**Your turn to try!** 🎯\n\n"
+                        f"Work out **{question}**:\n\n{layout}\n\n"
+                        "1. **Multiply the units column** first\n"
+                        "2. **Then the tens**\n"
+                        "3. **Carry over** when a product is more than 9\n\n"
+                        "Send me your answer and I'll check it! 💪"
+                    )
+                    hint = "Multiply column by column starting from the units, and carry over when needed!"
+        elif op == "-":
+            if a <= 20:
+                if fr:
+                    content = (
+                        "**À vous de jouer !** 🎯\n\n"
+                        f"Calculez **{question}**\n\n"
+                        f"💡 **Indice :** partez de {a} et comptez {b} en arrière !\n\n"
+                        "Envoyez-moi votre réponse ! 💪"
+                    )
+                    hint = f"Partez de {a} et comptez {b} en arrière !"
+                else:
+                    content = (
+                        "**Your turn to try!** 🎯\n\n"
+                        f"Work out **{question}**\n\n"
+                        f"💡 **Hint:** start at {a} and count back {b}!\n\n"
+                        "Send me your answer! 💪"
+                    )
+                    hint = f"Start at {a} and count back {b}!"
+            else:
+                layout = f"```text\n  {a}\n− {b}\n-----\n```"
+                if fr:
+                    content = (
+                        "**À vous de jouer !** 🎯\n\n"
+                        f"Calculez **{question}** :\n\n{layout}\n\n"
+                        "1. **Commencez par la colonne des unités**\n"
+                        "2. **Empruntez** au chiffre suivant si le chiffre du haut est trop petit\n\n"
+                        "Envoyez-moi votre réponse et je vérifierai ! 💪"
+                    )
+                    hint = "Commencez par les unités et empruntez quand le chiffre du haut est trop petit !"
+                else:
+                    content = (
+                        "**Your turn to try!** 🎯\n\n"
+                        f"Work out **{question}**:\n\n{layout}\n\n"
+                        "1. **Start with the units column**\n"
+                        "2. **Borrow** from the next column if the top digit is too small\n\n"
+                        "Send me your answer and I'll check it! 💪"
+                    )
+                    hint = "Start with the units column and borrow when the top digit is too small!"
+        else:
+            if a + b <= 20:
+                bigger, smaller = max(a, b), min(a, b)
+                if fr:
+                    content = (
+                        "**À vous de jouer !** 🎯\n\n"
+                        f"Calculez **{question}**\n\n"
+                        f"💡 **Indice :** partez de {bigger} et comptez {smaller} de plus !\n\n"
+                        "Envoyez-moi votre réponse ! 💪"
+                    )
+                    hint = f"Partez de {bigger} et comptez {smaller} de plus !"
+                else:
+                    content = (
+                        "**Your turn to try!** 🎯\n\n"
+                        f"Work out **{question}**\n\n"
+                        f"💡 **Hint:** start at {bigger} and count on {smaller} more!\n\n"
+                        "Send me your answer! 💪"
+                    )
+                    hint = f"Start at {bigger} and count on {smaller} more!"
+            else:
+                layout = f"```text\n  {a}\n+ {b:>{len(str(a))}}\n-----\n```"
+                if fr:
+                    content = (
+                        "**À vous de jouer !** 🎯\n\n"
+                        f"Calculez **{question}** :\n\n{layout}\n\n"
+                        "1. **Commencez par la colonne des unités**\n"
+                        "2. **Retenez** quand une colonne dépasse 9\n\n"
+                        "Envoyez-moi votre réponse et je vérifierai ! 💪"
+                    )
+                    hint = "Commencez par les unités et retenez quand une colonne dépasse 9 !"
+                else:
+                    content = (
+                        "**Your turn to try!** 🎯\n\n"
+                        f"Work out **{question}**:\n\n{layout}\n\n"
+                        "1. **Start with the units column**\n"
+                        "2. **Carry over** when a column makes 10 or more\n\n"
+                        "Send me your answer and I'll check it! 💪"
+                    )
+                    hint = "Start with the units column and carry over when a column makes 10 or more!"
         _pending_practice[sid] = {
             "question": question,
             "expected": {"number": result, "answer": f"{a} {op} {b} = {result}"},
-            "hint": language == "fr" and "Alignez les nombres par valeur de position, colonne par colonne !" or "Align the numbers by place value and work column by column!",
+            "hint": hint,
         }
-        if language == "fr":
-            content = (
-                "**À vous de jouer !** 🎯\n\n"
-                f"Résolvons **{question}** ensemble :\n\n"
-                "1. **Alignez les nombres par valeur de position**\n"
-                "2. **Commencez par la colonne des unités**\n"
-                "3. **Écrivez votre réponse** pour chaque colonne\n\n"
-                "Envoyez-moi votre réponse et je vérifierai ! 💪"
-            )
-        else:
-            content = (
-                "**Your turn to try!** 🎯\n\n"
-                f"Let's solve **{question}** together:\n\n"
-                "1. **Align the numbers by place value**\n"
-                "2. **Start with the units column** (the rightmost digit)\n"
-                "3. **Write your answer** for each column\n\n"
-                "Send me your answer and I'll check it! 💪"
-            )
         return _respond(content, verified=True, sources=_grounded(), metadata={
             "subject": doc["subject"],
             "difficulty": "beginner",

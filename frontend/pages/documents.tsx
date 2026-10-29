@@ -118,6 +118,29 @@ export default function DocumentsPage() {
     { key: 'rejected', label: t('Rejected', 'Rejetés'), icon: XCircle },
   ]
 
+  // Teacher review: approve/reject a curriculum document. Approved documents
+  // become available to students; rejected ones are hidden from them.
+  const handleUpdateStatus = async (id: string, status: 'approved' | 'rejected') => {
+    // Update the UI immediately, then persist to the backend
+    setDocuments((prev) =>
+      prev.map((d) =>
+        d.id === id
+          ? {
+              ...d,
+              status,
+              approvedAt: status === 'approved' ? new Date() : undefined,
+              approvedBy: status === 'approved' ? 'Current Teacher' : undefined,
+            }
+          : d
+      )
+    )
+    try {
+      await DocumentsAPI.updateStatus(id, status)
+    } catch (err) {
+      console.error('Failed to persist document status:', err)
+    }
+  }
+
   return (
     <Layout
       title="Documents - AI Learning Assistant"
@@ -213,6 +236,8 @@ export default function DocumentsPage() {
                         pages={doc.pageCount}
                         uploadedAt={doc.uploadedAt}
                         showActions={false}
+                        onApprove={(id) => handleUpdateStatus(id, 'approved')}
+                        onReject={(id) => handleUpdateStatus(id, 'rejected')}
                       />
                     </motion.div>
                   ))}

@@ -54,13 +54,15 @@ type FilterTab = 'all' | 'daily_target' | 'assignment' | 'review'
 
 export default function AssignmentsPage() {
   const { language } = useLanguage()
-  const { role, setRole } = useRole()
+  const { role, setRole, loaded } = useRole()
 
-  // Default direct visits to the teacher view — but never override a student
+  // Default role-less visits to the teacher view — but wait until the
+  // persisted role is restored first, so a student is never flipped to
+  // teacher (and back) on load
   useEffect(() => {
-    if (role !== 'student') setRole('teacher')
+    if (loaded && role === null) setRole('teacher')
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [loaded, role])
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [backendAvailable, setBackendAvailable] = useState(false)
   const [filter, setFilter] = useState<FilterTab>('all')
@@ -219,14 +221,16 @@ export default function AssignmentsPage() {
               <Clipboard className="w-7 h-7 mr-3 text-primary-600" />
               {t('Assignments & Daily Targets', 'Devoirs et objectifs quotidiens')}
             </h1>
-            <p className="text-slate-500 text-sm mt-1">Set targets and assignments for your students, then review their work</p>
+            <p className="text-slate-500 text-sm mt-1">
+              {t('Set targets and assignments for your students, then review their work', 'Définissez des objectifs et des devoirs pour vos élèves, puis corrigez leurs travaux')}
+            </p>
           </div>
           <button
             onClick={() => setShowCreateModal(true)}
             className="flex items-center space-x-2 px-4 py-2.5 bg-primary-600 text-white rounded-xl font-medium hover:bg-primary-700 transition-colors"
           >
             <Plus className="w-5 h-5" />
-            <span>Set New</span>
+            <span>{t('Set New', 'Créer')}</span>
           </button>
         </div>
 
@@ -263,7 +267,9 @@ export default function AssignmentsPage() {
           {filtered.length === 0 && (
             <div className="bg-white rounded-2xl p-12 border border-slate-200 text-center">
               <Clipboard className="w-12 h-12 mx-auto text-slate-300 mb-3" />
-              <p className="text-slate-500">No items here yet. Click &quot;Set New&quot; to create a target or assignment.</p>
+              <p className="text-slate-500">
+                {t('No items here yet. Click "Set New" to create a target or assignment.', 'Aucun élément ici. Cliquez sur « Créer » pour définir un objectif ou un devoir.')}
+              </p>
             </div>
           )}
           {filtered.map((assignment) => {
@@ -284,11 +290,13 @@ export default function AssignmentsPage() {
                             : 'bg-primary-100 text-primary-700'
                         }`}
                       >
-                        {assignment.type === 'daily_target' ? '🎯 Daily Target' : '📄 Assignment'}
+                        {assignment.type === 'daily_target'
+                          ? t('🎯 Daily Target', '🎯 Objectif quotidien')
+                          : t('📄 Assignment', '📄 Devoir')}
                       </span>
                       {assignment.status === 'reviewed' && (
                         <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">
-                          Reviewed
+                          {t('Reviewed', 'Corrigé')}
                         </span>
                       )}
                       {pending > 0 && (
@@ -318,7 +326,7 @@ export default function AssignmentsPage() {
                         className="flex items-center space-x-1 px-3 py-1.5 bg-primary-600 text-white text-xs font-medium rounded-lg hover:bg-primary-700 transition-colors"
                       >
                         <Eye className="w-3.5 h-3.5" />
-                        <span>Review</span>
+                        <span>{t('Review', 'Corriger')}</span>
                       </button>
                     )}
                     <button
@@ -375,7 +383,7 @@ export default function AssignmentsPage() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-slate-800">Set a New Target or Assignment</h2>
+                <h2 className="text-lg font-bold text-slate-800">{t('Set a New Target or Assignment', 'Définir un nouvel objectif ou un nouveau devoir')}</h2>
                 <button onClick={() => setShowCreateModal(false)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg">
                   <X className="w-5 h-5" />
                 </button>
@@ -398,27 +406,27 @@ export default function AssignmentsPage() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Title</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">{t('Title', 'Titre')}</label>
                   <input
                     value={form.title}
                     onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                    placeholder={form.type === 'daily_target' ? 'e.g. Ask 5 math questions' : 'e.g. Explain the water cycle'}
+                    placeholder={form.type === 'daily_target' ? t('e.g. Ask 5 math questions', 'ex. Poser 5 questions de maths') : t('e.g. Explain the water cycle', 'ex. Expliquer le cycle de l\'eau')}
                     className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Instructions for students</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">{t('Instructions for students', 'Consignes pour les élèves')}</label>
                   <textarea
                     value={form.description}
                     onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                    placeholder="Describe what students should do..."
+                    placeholder={t('Describe what students should do...', 'Décrivez ce que les élèves doivent faire...')}
                     rows={3}
                     className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none text-sm"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Subject</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">{t('Subject', 'Matière')}</label>
                     <select
                       value={form.subject}
                       onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))}
@@ -430,7 +438,7 @@ export default function AssignmentsPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Grade</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">{t('Grade', 'Classe')}</label>
                     <select
                       value={form.grade}
                       onChange={(e) => setForm((f) => ({ ...f, grade: e.target.value }))}
@@ -444,7 +452,7 @@ export default function AssignmentsPage() {
                 </div>
                 {form.type === 'daily_target' ? (
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Target (times per day)</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">{t('Target (times per day)', 'Objectif (fois par jour)')}</label>
                     <input
                       type="number"
                       min={1}
@@ -455,7 +463,7 @@ export default function AssignmentsPage() {
                   </div>
                 ) : (
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Due date</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">{t('Due date', 'Pour le')}</label>
                     <input
                       type="date"
                       value={form.dueDate}
@@ -469,7 +477,7 @@ export default function AssignmentsPage() {
                   disabled={!form.title.trim() || !form.description.trim()}
                   className="w-full py-2.5 bg-primary-600 text-white rounded-xl font-medium hover:bg-primary-700 transition-colors disabled:opacity-50"
                 >
-                  Create {form.type === 'daily_target' ? 'Daily Target' : 'Assignment'}
+                  {form.type === 'daily_target' ? t('Create Daily Target', 'Créer l\'objectif quotidien') : t('Create Assignment', 'Créer le devoir')}
                 </button>
               </div>
             </motion.div>
@@ -496,7 +504,7 @@ export default function AssignmentsPage() {
             >
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h2 className="text-lg font-bold text-slate-800">Review Submission</h2>
+                  <h2 className="text-lg font-bold text-slate-800">{t('Review Submission', 'Corriger la soumission')}</h2>
                   <p className="text-sm text-slate-500">{reviewing.assignment.title}</p>
                 </div>
                 <button onClick={() => setReviewing(null)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg">
@@ -516,19 +524,19 @@ export default function AssignmentsPage() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Feedback</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">{t('Feedback', 'Commentaire')}</label>
                   <textarea
                     value={reviewForm.feedback}
                     onChange={(e) => setReviewForm((f) => ({ ...f, feedback: e.target.value }))}
-                    placeholder="Tell the student what they did well and how to improve..."
+                    placeholder={t('Tell the student what they did well and how to improve...', 'Dites à l\'élève ce qui était bien et comment progresser...')}
                     rows={3}
                     className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Grade</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">{t('Grade', 'Note')}</label>
                   <div className="flex space-x-2">
-                    {['A', 'B', 'C', 'Needs Work'].map((g) => (
+                    {['A', 'B', 'C', t('Needs Work', 'À retravailler')].map((g) => (
                       <button
                         key={g}
                         onClick={() => setReviewForm((f) => ({ ...f, grade: g }))}
@@ -548,13 +556,13 @@ export default function AssignmentsPage() {
                     onClick={() => handleReview(true)}
                     className="flex-1 py-2.5 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors"
                   >
-                    Approve
+                    {t('Approve', 'Approuver')}
                   </button>
                   <button
                     onClick={() => handleReview(false)}
                     className="flex-1 py-2.5 bg-amber-500 text-white rounded-xl font-medium hover:bg-amber-600 transition-colors"
                   >
-                    Request Changes
+                    {t('Request Changes', 'Demander des corrections')}
                   </button>
                 </div>
               </div>

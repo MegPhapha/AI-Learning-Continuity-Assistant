@@ -6,22 +6,28 @@ type Role = 'student' | 'teacher'
 
 interface RoleContextValue {
   role: Role | null
+  /** True once the persisted role (if any) has been restored from localStorage */
+  loaded: boolean
   setRole: (role: Role) => void
   clearRole: () => void
 }
 
 const RoleContext = createContext<RoleContextValue>({
   role: null,
+  loaded: false,
   setRole: () => {},
   clearRole: () => {},
 })
 
 /**
  * Global role state (Student / Teacher). Persisted to localStorage so the
- * navigation and header reflect the chosen role across pages.
+ * navigation and header reflect the chosen role across pages. `loaded`
+ * tells consumers when the persisted value has been restored, so pages
+ * never guess (and never overwrite) the role before it is known.
  */
 export function RoleProvider({ children }: { children: ReactNode }) {
   const [role, setRoleState] = useState<Role | null>(null)
+  const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
     try {
@@ -29,11 +35,14 @@ export function RoleProvider({ children }: { children: ReactNode }) {
       if (saved === 'student' || saved === 'teacher') setRoleState(saved)
     } catch {
       // storage unavailable
+    } finally {
+      setLoaded(true)
     }
   }, [])
 
   const setRole = (r: Role) => {
     setRoleState(r)
+    setLoaded(true)
     try {
       window.localStorage.setItem('app-role', r)
     } catch {
@@ -43,6 +52,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
 
   const clearRole = () => {
     setRoleState(null)
+    setLoaded(true)
     try {
       window.localStorage.removeItem('app-role')
     } catch {
@@ -51,7 +61,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <RoleContext.Provider value={{ role, setRole, clearRole }}>
+    <RoleContext.Provider value={{ role, loaded, setRole, clearRole }}>
       {children}
     </RoleContext.Provider>
   )

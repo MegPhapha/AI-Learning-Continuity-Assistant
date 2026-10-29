@@ -18,6 +18,9 @@ interface DocumentCardProps {
   onView?: (id: string) => void
   onEdit?: (id: string) => void
   onDelete?: (id: string) => void
+  /** Teacher review actions: approve/reject pending (or re-approve rejected) documents */
+  onApprove?: (id: string) => void
+  onReject?: (id: string) => void
   showActions?: boolean
 }
 
@@ -67,6 +70,8 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
   onView,
   onEdit,
   onDelete,
+  onApprove,
+  onReject,
   showActions = true,
 }) => {
   const statusInfo = statusConfig[status]
@@ -150,29 +155,61 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
           <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
             {onView && (
               <button
+                type="button"
                 onClick={() => onView(id)}
                 className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all"
                 title="View"
+                aria-label="View"
               >
                 <Eye className="w-4 h-4" />
               </button>
             )}
             {onEdit && (
               <button
+                type="button"
                 onClick={() => onEdit(id)}
                 className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all"
                 title="Edit"
+                aria-label="Edit"
               >
                 <Edit className="w-4 h-4" />
               </button>
             )}
             {onDelete && (
               <button
+                type="button"
                 onClick={() => onDelete(id)}
                 className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
                 title="Delete"
+                aria-label="Delete"
               >
                 <Trash2 className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Teacher review actions: approve / reject non-approved documents */}
+        {(onApprove || onReject) && status !== 'approved' && (
+          <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+            {onApprove && (
+              <button
+                type="button"
+                onClick={() => onApprove(id)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-600 text-white text-xs font-medium rounded-lg hover:bg-emerald-700 transition-colors"
+              >
+                <CheckCircle className="w-3.5 h-3.5" />
+                <span>{language === 'fr' ? 'Approuver' : 'Approve'}</span>
+              </button>
+            )}
+            {onReject && status === 'pending' && (
+              <button
+                type="button"
+                onClick={() => onReject(id)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white text-red-600 text-xs font-medium rounded-lg border border-red-200 hover:bg-red-50 transition-colors"
+              >
+                <XCircle className="w-3.5 h-3.5" />
+                <span>{language === 'fr' ? 'Rejeter' : 'Reject'}</span>
               </button>
             )}
           </div>

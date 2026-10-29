@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.ailearning.backend</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>-c</string>
+    <string>cd '/Users/margaretfafa/AI Learning Continuity Assistant' &amp;&amp; set -a &amp;&amp; source .env 2>/dev/null; set +a &amp;&amp; exec .venv/bin/uvicorn backend.main:app --host 0.0.0.0 --port 8000</string>
+  </array>
+  <key>KeepAlive</key>
+  <true/>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>3</integer>
+  <key>StandardOutPath</key>
+  <string>/Users/margaretfafa/AI Learning Continuity Assistant/backend_server.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/margaretfafa/AI Learning Continuity Assistant/backend_server.log</string>
+</dict>
+</plist>

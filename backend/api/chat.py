@@ -96,7 +96,9 @@ def get_llm_answer(question: str, subject: str, grade: str, language: str) -> tu
     # 1. Mistral's own API — real Mistral model, EU-hosted
     api_answer = get_mistral_api_answer(prompt)
     if api_answer:
-        return api_answer, f"Mistral {MISTRAL_API_MODEL.replace('-latest', '')} (EU)"
+        # e.g. "ministral-3b-latest" → "Mistral Ministral 3B (EU)"
+        display = MISTRAL_API_MODEL.replace("-latest", "").replace("-", " ").title()
+        return api_answer, f"Mistral {display} (EU)"
 
     # 2. Local Ollama models — fully offline fallback chain
     models = [OLLAMA_MODEL, "mistral", "llama3.2"]
